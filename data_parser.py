@@ -37,7 +37,37 @@ def load_geometries(filepath):
     return gdf
 
 
+def read_manhattan_ids():
+    try:
+        with open("data/nyc_taxi_zones.geojson", "r") as f:
+            content = f.read()
+            ids = []
+            for part in re.split(r'[\s,\n]+', content.strip()):
+                if part:
+                    try:
+                        ids.append(int(float(part)))
+                    except:
+                        pass
+            return list(dict.fromkeys(ids))
+    except:
+        pass
 
+def load_manhattan_zones(filepath):
+    with open(filepath, "r") as f:
+        return f.read()
+
+def parse_to_ids(item):
+    if isinstance(item, (list, tuple)):
+        item = ".".join(str(i) for i in item)
+
+    ids = []
+    for part in re.split(r'[\s,\n]+', str(item).strip()):
+        if part:
+            try:
+                ids.append(int(float(part)))
+            except ValueError:
+                pass
+    return ids
 
     
 
