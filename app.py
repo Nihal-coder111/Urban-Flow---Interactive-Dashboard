@@ -3,7 +3,7 @@ import pandas as pd
 import folium
 import geopandas as gpd
 from streamlit_folium import st_folium
-from data_parser import load_adjacency, load_geometries, load_trips, read_manhattan_ids, load_manhattan_zones, parse_to_ids
+from data_parser import load_adjacency, load_geometries, load_trips, read_manhattan_ids, load_manhattan_zones, parse_to_ids, check_contiguity
 
 st.set_page_config(page_title="Urban Flow Dashboard", layout="wide")
 
@@ -67,6 +67,31 @@ else:
 selected_time = st.sidebar.slider("Select time period", int(trips_df["time"].min()), int(trips_df["time"].max()))
 support_threshold = st.sidebar.number_input("Support threshold", min_value=1, value = 5)
 
+#Multi selection 
+st.sidebar.divider()
+st.sidebar.header("Multi zone selection")
+enable_multi = st.sidebar.checkbox("Enable Multi zone selection", value = False)
+
+if enable_multi:
+    st.sidebar.warning("Click multiple zone to create a region")
+    if "selected_zones" not in st.session_state:
+        st.session_state["selected_zones"] = []
+    
+    if st.session_state["selected_zones"]:
+        st.sidebar.write(f"**Selected zones:** {len(st.session_state['selected_zones'])}")
+        st.sidebar.write(f"IDs: {st.session_state["selected_zones"]}")
+
+        if st.sidebar.button("Clear selection"):
+            st.session_state["selected_zones"] = []
+            st.rerun()
+
+        if check_contiguity(st.session_state["selected_zones"], adjacent_df):
+            st.sidebar.success("Zones are contiguous")
+        else:
+            st.sidebar.error("Zones are not contiguous")
+    else:
+        st.sidebar.info("Click zones on the map to add them to your region")
+
 #Main content
 st.title("Urban Flow: Visualizing ODT flow Patterns")
 
@@ -111,4 +136,9 @@ with col1:
     
     else:
         st.warning("No Manhattan zones found")
-    st_folium(m, width = 700, height = 500)
+
+    map_data = st_folium(m, width = 700, height = 500)
+
+with col2:
+    st.subheader("Active Metrics")
+    st.write(f"Total Manhattan query zones loaded: {len(manhattan_ids_int)}")

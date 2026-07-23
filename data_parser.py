@@ -69,6 +69,32 @@ def parse_to_ids(item):
                 pass
     return ids
 
+
+def check_contiguity(zone_ids, adjacency_df):
+    if len(zone_ids) <= 1:
+        return True
+
+    adj_set = set()
+    for _, row in adjacency_df.iterrows():
+        adj_set.add((row["Zone_A"], row["Zone_B"]))
+        adj_set.add((row["Zone_B"], row["Zone_A"]))
+
+    connected = {zone_ids[0]}
+    remaining = set(zone_ids[1:])
+
+    changed = True
+    while changed and remaining:
+        changed = False
+        for zone in list(remaining):
+            for connected_zone in connected:
+                if (zone, connected_zone) in adj_set:
+                    connected.add(zone)
+                    remaining.remove(zone)
+                    changed = True
+                    break
+    
+    return len(remaining) == 0
+
     
 
 
