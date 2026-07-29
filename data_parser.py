@@ -95,6 +95,37 @@ def check_contiguity(zone_ids, adjacency_df):
     
     return len(remaining) == 0
 
+def get_zone_centroid(zone_id, geometry_df):
+    try:
+        if isinstance(zone_id, (list,tuple,pd.Series)):
+            zone_id = int(zone_id[0]) if len(zone_id) > 0 else None
+        else:
+            zone_id = int(zone_id)
+        if not zone_id or zone_id <= 0:
+            return None
+
+        zone = geometry_df[geometry_df["locationid"] ==  zone_id]
+        if zone.empty:
+            return None
+        
+        centorid = zone.iloc[0]["geometry"].centroid
+        return (centorid.y, centorid.x)
+    except:
+        return None
+
+def get_merged_centroids(zone_ids, geometry_df):
+    centroids = []
+    for zone_id in zone_ids:
+        centroid = get_zone_centroid(zone_id, geometry_df)
+        if centroid:
+            centroids.append(centroid)
+    
+    if not centroids:
+        return None
+    
+    avg_lat = sum(c[0] for c in centroids / len(centroids))
+    avg_lon = sum(c[1] for c in centroids / len(centroids))
+    return (avg_lat, avg_lon)
     
 
 
