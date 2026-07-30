@@ -448,3 +448,126 @@ with col2:
                 st.write(f"**Neighbors ({len(neighbor_ids)}):** {', '.join(display)}")
             else:
                 st.info("No adjacent neighbors")
+
+
+    #Multi zone selection
+    elif enable_multi and st.session_state.get("selected_zones", []):
+        region_zones = st.session_state["selected_zones"]
+        st.success(f"Region: {len(region_zones)} zones")
+        st.write(f"**Zone IDs:** {region_zones}")
+
+        if check_contiguity(region_zones, adjacent_df):
+            st.success("Contiguous region")
+        else:
+            st.error("Not contiguous")
+
+        st.divider()
+        st.subheader("Regional flow patterns")
+
+        total_flows = 0
+        for i in region_zones:
+            flows = trips_df[
+                (trips_df["origin"] == i) &
+                (trips_df["time"] == selected_time) &
+                (trips_df["trip_count"] >= support_threshold)
+            ]
+            total_flows += len(flows)
+
+        st.write(f"**Time:** {selected_time}:00")
+        st.write(f"**Support:** ≥ {support_threshold} trips")
+        st.write(f"**Active Flows:** {total_flows} destinations")
+        
+        if total_flows > 0:
+            merged_flows = []
+            for z in region_zones:
+                zone_flows = trips_df[
+                    (trips_df['origin'] == z) & 
+                    (trips_df['time'] == selected_time) & 
+                    (trips_df['trip_count'] >= support_threshold)
+                ]
+                if not zone_flows.empty:
+                    merged_flows.append(zone_flows)
+
+
+            if merged_flows:
+                all_flows = pd.concat(merged_flows, ignore_index=True)
+                top_region = all_flows.groupby('destination')['trip_count'].sum().reset_index()
+                top_region = top_region.sort_values('trip_count', ascending=False).head(5)
+                
+                st.write("**Top Regional Destinations:**")
+                for _, row in top_region.iterrows():
+                    dest_id = row['destination']
+                    trip_count = row['trip_count']
+                    dest_info = manhattan_gdf[manhattan_gdf['locationid'] == dest_id]
+                    if not dest_info.empty and "zone" in dest_info.columns:
+                        st.write(f"  • Zone {dest_id} ({dest_info.iloc[0]['zone']}): {trip_count} trips")
+                    else:
+                        st.write(f"  • Zone {dest_id}: {trip_count} trips")
+                
+                # Plotly chart for region
+                st.subheader("📊 Top Regional Destinations")
+                top_flows = all_flows.groupby("destination")["trip_count"].sum().reset_index()
+                top_flows = top_flows.sort_values("trip_count", ascending=False).head(10)
+                top_flows["destination"] = top_flows["destination"].astype(str)
+                top_flows["zone_name"] = top_flows["destination"].apply(
+                    lambda x: manhattan_gdf[manhattan_gdf["locationid"] == int(x)]["zone"].iloc[0]
+                    if int(x) in manhattan_gdf["locationid"].values else "Unknown"
+                )
+                
+                fig = px.bar(
+                    top_flows,
+                    x="destination",
+                    y="trip_count",
+                    labels={"destination": "Destination Zone", "trip_count": "Total trips"},
+                    color="trip_count",
+                    color_continuous_scale="Reds",
+                    title="Top 10 Regional Destinations"
+                )
+                fig.update_layout(
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    height=300,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white')
+                )
+                fig.update_traces(
+                    hovertemplate='Zone %{x}<br>Trips: %{y}<br>Zone Name: %{customdata}<extra></extra>',
+                    customdata=top_flows['zone_name']
+                )
+                region_key = "_".join(str(z) for z in sorted(region_zones))
+                st.plotly_chart(fig, use_container_width=True, key=f"region_chart_{region_key}_{selected_time}_{time.time()}")
+
+
+         # Adjacent zones for the region
+        if not adjacent_df.empty:
+            st.divider()
+            st.subheader("🔗 Adjacent Zones")
+            
+            all_neighbors = set()
+            for z in region_zones:
+                neighbors = adjacent_df[
+                    (adjacent_df["Zone_A"] == z) | (adjacent_df["Zone_B"] == z)
+                ]
+                for n_id in neighbors["Zone_A"].tolist() + neighbors["Zone_B"].tolist():
+                    if n_id not in region_zones:
+                        all_neighbors.add(n_id)
+            
+            if all_neighbors:
+                display = []
+                for n_id in list(all_neighbors)[:5]:
+                    n_info = manhattan_gdf[manhattan_gdf['locationid'] == n_id]
+                    if not n_info.empty and "zone" in n_info.columns:
+                        display.append(f"{n_id} ({n_info.iloc[0]['zone']})")
+                    else:
+                        display.append(str(n_id))
+                if len(all_neighbors) > 5:
+                    display.append(f"... +{len(all_neighbors) - 5} more")
+                st.write(f"**Adjacent Zones ({len(all_neighbors)}):** {', '.join(display)}")
+            else:
+                st.info("ℹ️ No adjacent neighbors outside region")
+    
+    else:
+        st.info("💡 Click a zone on the map to view details")        
+
+
+            

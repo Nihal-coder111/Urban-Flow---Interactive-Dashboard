@@ -123,8 +123,8 @@ def get_merged_centroids(zone_ids, geometry_df):
     if not centroids:
         return None
     
-    avg_lat = sum(c[0] for c in centroids / len(centroids))
-    avg_lon = sum(c[1] for c in centroids / len(centroids))
+    avg_lat = sum(c[0] for c in centroids) / len(centroids)
+    avg_lon = sum(c[1] for c in centroids) / len(centroids)
     return (avg_lat, avg_lon)
     
 
