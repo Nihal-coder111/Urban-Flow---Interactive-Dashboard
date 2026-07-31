@@ -72,10 +72,10 @@ support_threshold = st.sidebar.number_input("Support threshold", min_value=1, va
 
 #Multi selection 
 st.sidebar.divider()
-st.sidebar.header("Multi zone selection")
-enable_multi = st.sidebar.checkbox("Enable Multi zone selection", value = False)
+st.sidebar.header("Generalized pattern mode")
+enable_generalized = st.sidebar.checkbox("Enable generalized patterns", value = False)
 
-if enable_multi:
+if enable_generalized:
     st.sidebar.warning("Click multiple zone to create a region")
     if "selected_zones" not in st.session_state:
         st.session_state["selected_zones"] = []
@@ -144,7 +144,7 @@ with col1:
     if "clicked_zone_id" not in st.session_state:
         st.session_state["clicked_zone_id"] = None
 
-    if enable_multi and st.session_state.get("selected_zones", []):
+    if enable_generalized and st.session_state.get("selected_zones", []):
         zone_ids = st.session_state["selected_zones"]
         is_multi = True
     else:
@@ -273,7 +273,7 @@ with col1:
                 (trips_df['trip_count'] >= support_threshold)
             ]
             if not preview.empty:
-                if not enable_multi:
+                if not enable_generalized:
                     st.info(f"Click a zone on the map to see flows. Preview: {len(preview)} flows from zone {selected_origin}")
                 else:
                     st.info(f"Click zones on the map to build a region")
@@ -326,7 +326,7 @@ with col1:
             if new_id:
                 try:
                     new_id = int(new_id)
-                    if enable_multi:
+                    if enable_generalized:
                         if "selected_zones" not in st.session_state:
                             st.session_state["selected_zones"] = []
                         if new_id in st.session_state["selected_zones"]:
@@ -359,7 +359,7 @@ with col2:
     st.subheader("Zone interaction")
 
     #Single zone mode
-    if not enable_multi and clicked_id:
+    if not enable_generalized and clicked_id:
         st.success(f"Selected Zone: **{clicked_id}** ")
 
         if not manhattan_gdf.empty:
@@ -451,7 +451,7 @@ with col2:
 
 
     #Multi zone selection
-    elif enable_multi and st.session_state.get("selected_zones", []):
+    elif enable_generalized and st.session_state.get("selected_zones", []):
         region_zones = st.session_state["selected_zones"]
         st.success(f"Region: {len(region_zones)} zones")
         st.write(f"**Zone IDs:** {region_zones}")
