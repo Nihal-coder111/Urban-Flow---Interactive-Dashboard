@@ -20,7 +20,7 @@ def load_adjacency(filepath):
     data = []
     with open(filepath, "r") as f:
         for line in f:
-            parts = re.split(f'\s+', line.strip())
+            parts = re.split(r'\s+', line.strip())
             if len(parts)>=2:
                 try:
                     data.append([int(parts[0]), int(parts[1])])
@@ -32,14 +32,14 @@ def load_adjacency(filepath):
 def load_geometries(filepath):
     gdf = gpd.read_file(filepath)
     gdf["locationid"] = gdf["locationid"].astype(int)
-    if gdf.crs != "ESPG:4326":
+    if gdf.crs != "EPSG:4326":
         gdf = gdf.to_crs(epsg=4326)
     return gdf
 
 
 def read_manhattan_ids():
     try:
-        with open("data/nyc_taxi_zones.geojson", "r") as f:
+        with open("data/manhattan-query.txt", "r") as f:
             content = f.read()
             ids = []
             for part in re.split(r'[\s,\n]+', content.strip()):
@@ -108,8 +108,8 @@ def get_zone_centroid(zone_id, geometry_df):
         if zone.empty:
             return None
         
-        centorid = zone.iloc[0]["geometry"].centroid
-        return (centorid.y, centorid.x)
+        centroid = zone.iloc[0]["geometry"].centroid
+        return (centroid.y, centroid.x)
     except:
         return None
 

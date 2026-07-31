@@ -175,7 +175,7 @@ with col1:
                         
                         if not zone_flow.empty:
                             merged_flow.append(zone_flow)
-                    active_flows = pd.concat(merged_flow, ignore_index=True) if merged_flow else pd.DataFrame
+                    active_flows = pd.concat(merged_flow, ignore_index=True) if merged_flow else pd.DataFrame()
 
                     #destination filter
                     if selected_destination and not active_flows.empty:
@@ -192,18 +192,18 @@ with col1:
                             trip_count = row["trip_count"]
                             dest_centroid = get_zone_centroid(dest_id, geometry_df)
                         
-                        if dest_centroid:
-                            weight = 1 + (trip_count/max_trips)*4
-                            color = "#FF0000" if trip_count > 20 else "#FF8800" if trip_count > 10 else "#3388FF"
+                            if dest_centroid:
+                                weight = 1 + (trip_count/max_trips)*4
+                                color = "#FF0000" if trip_count > 20 else "#FF8800" if trip_count > 10 else "#3388FF"
 
-                            folium.PolyLine(
-                                [[origin_centroid[0], origin_centroid[1]], 
-                                [dest_centroid[0], dest_centroid[1]]],
-                                weight=weight,
-                                color=color,
-                                opacity=0.7,
-                                tooltip=f"Region → Zone {dest_id}: {trip_count} trips"
-                            ).add_to(m)
+                                folium.PolyLine(
+                                    [[origin_centroid[0], origin_centroid[1]], 
+                                    [dest_centroid[0], dest_centroid[1]]],
+                                    weight=weight,
+                                    color=color,
+                                    opacity=0.7,
+                                    tooltip=f"Region → Zone {dest_id}: {trip_count} trips"
+                                ).add_to(m)
 
                         st.info(f"Showing {len(flow_groups)} regional flow patterns")
                     else:
@@ -366,9 +366,9 @@ with col2:
             zone_info = manhattan_gdf[manhattan_gdf["locationid"] == clicked_id]
             if not zone_info.empty:
                 if "zone" in zone_info.columns:
-                    st.write(f"**Zone Name:** {zone_info.iloc[0]["zone"]}")
+                    st.write(f"**Zone Name:** {zone_info.iloc[0]['zone']}")
                 if "borough" in zone_info.columns:
-                    st.write(f"**Borough:** {zone_info.iloc[0]["borough"]}")
+                    st.write(f"**Borough:** {zone_info.iloc[0]['borough']}")
 
         st.divider()
         st.subheader("Flow patterns")
@@ -430,7 +430,7 @@ with col2:
             neighbors = adjacent_df[
                 (adjacent_df["Zone_A"] == clicked_id) | (adjacent_df["Zone_B"] == clicked_id)
             ]
-            neighbor_ids = list(set(neighbors["Zone_A"].to_list() + neighbors["Zone_B"].to_list()))
+            neighbor_ids = list(set(neighbors["Zone_A"].tolist() + neighbors["Zone_B"].tolist()))
             if clicked_id in neighbor_ids:
                 neighbor_ids.remove(clicked_id)
 
@@ -439,7 +439,7 @@ with col2:
                 for n_id in neighbor_ids:
                     n_info = manhattan_gdf[manhattan_gdf["locationid"] == n_id]
                     if not n_info.empty and "zone" in n_info.columns:
-                        display.append(f"{n_id} ({n_info.iloc[0]["zone"]})")
+                        display.append(f"{n_id} ({n_info.iloc[0]['zone']})")
                     else:
                         display.append(str(n_id))
 
@@ -569,5 +569,87 @@ with col2:
     else:
         st.info("💡 Click a zone on the map to view details")        
 
+    #Pattern drill down
+    st.divider()
+    st.subheader("Pattern drill down")
+
+    if clicked_id and not active_flows.empty:
+        if selected_destination:
+            st.info(f"Currently filtered to Zone {selected_destination}")
+        
+        st.write("**Select a destination to see flow details:**")
+        
+        # Get unique destinations from active flows
+        dest_options = active_flows.groupby("destination")["trip_count"].sum().reset_index()
+        dest_options = dest_options.sort_values("trip_count", ascending=False)
+        
+        if not dest_options.empty:
+            dest_list = [f"Zone {row['destination']} ({row['trip_count']} trips)" 
+                         for _, row in dest_options.iterrows()]
+            
+            selected_dest_option = st.selectbox(
+                "Select Destination",
+                ["-- Select a destination --"] + dest_list,
+                key="drill_down_select"
+            )
+            
+            if selected_dest_option and selected_dest_option != "-- Select a destination --":
+                import re
+                match = re.search(r"Zone (\d+)", selected_dest_option)
+                if match:
+                    dest_id = int(match.group(1))
+                    
+                    # Get flow details for this destination
+                    flow_details = active_flows[active_flows["destination"] == dest_id]
+                    
+                    if not flow_details.empty:
+                        st.success(f"📋 Flow Details: Zone {clicked_id} → Zone {dest_id}")
+                        
+                        # Get destination name
+                        dest_info = manhattan_gdf[manhattan_gdf["locationid"] == dest_id]
+                        dest_name = dest_info.iloc[0]["zone"] if not dest_info.empty and "zone" in dest_info.columns else "Unknown"
+                        
+                        st.write(f"**Destination Name:** {dest_name}")
+                        st.write(f"**Total Trips:** {flow_details["trip_count"].sum()}")
+                        st.write(f"**Support:** {support_threshold}")
+                        st.write(f"**Time Period:** {selected_time}:00")
+                        
+                        st.write("**Contributing Trips:**")
+                        st.dataframe(
+                            flow_details[["origin", "destination", "time", "trip_count"]].head(10),
+                            use_container_width=True
+                        )
+        else:
+            st.info("No destinations available with current filters")
+    elif clicked_id and active_flows.empty:
+        st.info("No flows available for drill-down. Change the time or support threshold.")
+    else:
+        st.info("Select a zone to enable pattern drill-down")
+
+
+#Export feature
+st.sidebar.divider()
+st.sidebar.subheader("Export Data")
+
+if not active_flows.empty:
+    if st.sidebar.button("Export as CSV"):
+        csv = active_flows.to_csv(index=False)
+        st.sidebar.download_button(
+            label="Download CSV",
+            data=csv,
+            file_name=f"odt_patterns_{selected_time}.csv",
+            mime="text/csv"
+        )
+    
+    if st.sidebar.button("Export as JSON"):
+        json_data = active_flows.to_json(orient="records")
+        st.sidebar.download_button(
+            label="Download JSON",
+            data=json_data,
+            file_name=f"odt_patterns_{selected_time}.json",
+            mime="application/json"
+        )
+else:
+    st.sidebar.info("Select a zone to export data")
 
             
