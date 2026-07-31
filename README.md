@@ -3,7 +3,7 @@ An interactive Streamlit based web application to visualize, filter, and analyze
 
 # ODT Pattern Visualization Dashboard
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app-url.streamlit.app)
+[![Streamlit App](https://urban-flow---interactive-dashboard-ahxd9rib6dvpwyr5cfiufq.streamlit.app/)]
 
 > **Interactive visualization platform for exploring Generalized Origin-Destination-Time (ODT) flow patterns from urban mobility data.**
 
@@ -28,9 +28,7 @@ This dashboard visualizes passenger flow patterns derived from taxi trip data in
 
 ## Live Demo
 
-**URL:** [https://your-app-url.streamlit.app](https://your-app-url.streamlit.app)
-
-> *Note: Replace with your actual Streamlit Cloud URL after deployment*
+**URL:** https://urban-flow---interactive-dashboard-ahxd9rib6dvpwyr5cfiufq.streamlit.app/
 
 ---
 
